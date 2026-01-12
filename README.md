@@ -9,8 +9,10 @@ A PowerShell-based tool for robust, segmented downloading of large VHD files, of
 
 ## Requirements
 
-- **PowerShell 7.0 or later is required** (Windows PowerShell 5.1 is not supported)
+- **Windows PowerShell 5.1 or PowerShell 7+**
 - Network access to target file URLs
+
+> Note: The scripts also work on PowerShell 4.0+ because they use `Get-FileHash` for checksum verification (introduced in 4.0). Windows PowerShell 5.1 is recommended and validated.
 
 ## Usage
 
@@ -30,6 +32,8 @@ A PowerShell-based tool for robust, segmented downloading of large VHD files, of
 .\Get-OnlineFile.ps1 -OutputFile "MyVHD.vhd" -Threads 8
 ```
 
+> Tip: Run the scripts with your default PowerShell. No special version switching is required for normal use.
+
 ### Clean Up Temporary Files and Jobs
 
 If an interrupted or failed download leaves behind temporary files or lingering jobs, run:
@@ -40,6 +44,11 @@ If an interrupted or failed download leaves behind temporary files or lingering 
 
 - This script stops all running PowerShell jobs in the current session.
 - It deletes all temporary segment files (files prefixed with `segment_`) from the script’s directory.
+
+## Window Titles
+
+- The main window is labeled: "VHD Download Manager - Main Process".
+- Each child job window is labeled: "VHD Download - Segment <N>" for clarity during parallel downloads.
 
 ## File Overview
 
@@ -52,6 +61,10 @@ Edit the top of `Get-OnlineFile.ps1` to change:
 - The target `$Url` of the VHD file
 - The output file name ($OutputFile)
 - The thread count (parameter `$Threads` in `Start-Download`)
+
+## Release Notes
+
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for details on recent changes.
 
 ## License
 

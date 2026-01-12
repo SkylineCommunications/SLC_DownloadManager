@@ -1,11 +1,3 @@
-$Url = "https://stgpublicdownloads.blob.core.windows.net/cnt-selfhosteddma-vmimages/10.5/mgdsk-selfhosted-dma-Images-1005000900.vhdx"
-$OutputFile = Join-Path -Path $ScriptDirectory -ChildPath "disk-selfhosteddma.vhdx"
-# Download the SHA256 file
-$shaResponse = Invoke-WebRequest -Uri ($Url + ".sha256")
-
-# Extract the hash (first token before the filename)
-$urlSHA256 = $shaResponse.Content.Split(" ")[0]
-
 
 function Get-Segment {
     param (
@@ -47,8 +39,7 @@ function Start-Download {
         [int]$Threads = 16
     )
 
-    # Get the script's directory
-    $ScriptDirectory = $PSScriptRoot
+    # Use the script-level $ScriptDirectory variable
     $OutputFile = Join-Path -Path $ScriptDirectory -ChildPath $OutputFile
 
     $Response = Invoke-WebRequest -Uri $Url -Method Head
@@ -62,12 +53,28 @@ function Start-Download {
         $End = if ($i -eq $Threads - 1) { $FileSize - 1 } else { ($i + 1) * $SegmentSize - 1 }
         $SegmentFile = Join-Path -Path $ScriptDirectory -ChildPath "segment_$i"
         $SegmentFiles += $SegmentFile
-        $Jobs += Start-Job -ScriptBlock {
-            param ($Url, $Start, $End, $SegmentFile)
-            Invoke-WebRequest -Uri $Url -Headers @{ Range = "bytes=$Start-$End" } -OutFile $SegmentFile
-        } -ArgumentList $Url, $Start, $End, $SegmentFile
+        $Jobs += Start-Job -Name "VHD_SegmentDownload_$i" -ScriptBlock {
+            param ($Url, $Start, $End, $SegmentFile, $SegmentNumber)
+            $host.UI.RawUI.WindowTitle = "VHD Download - Segment $SegmentNumber"
+            try {
+                $Request = [System.Net.HttpWebRequest]::Create($Url)
+                $Request.Method = "GET"
+                $Request.AddRange($Start, $End)
+                $Response = $Request.GetResponse()
+                $ResponseStream = $Response.GetResponseStream()
+                $FileStream = [System.IO.File]::Create($SegmentFile)
+                $ResponseStream.CopyTo($FileStream)
+                $FileStream.Close()
+                $ResponseStream.Close()
+                $Response.Close()
+            } catch {
+                Write-Error "Failed to download segment: $_"
+            }
+        } -ArgumentList $Url, $Start, $End, $SegmentFile, $i
     }
-
+    
+    Write-Host "Total jobs started: $($Jobs.Count)" -ForegroundColor Cyan
+    
     # Track progress of segment downloads
     while ($Jobs.State -contains 'Running') {
         $totalDownloaded = 0
@@ -76,7 +83,7 @@ function Start-Download {
                 $totalDownloaded += (Get-Item $SegmentFile).Length
             }
         }
-        $percentComplete = [math]::Round(($totalDownloaded / $FileSize) * 100)
+        $percentComplete = [math]::Min([math]::Round(($totalDownloaded / $FileSize) * 100), 100)
         Write-Progress -Activity "Downloading segments" -Status "$percentComplete% complete" -PercentComplete $percentComplete
         Start-Sleep -Milliseconds 500
     }
@@ -112,7 +119,7 @@ function Merge-Segments {
             $InputStream.Close()
             Remove-Item $Segment
             $completedSegments++
-            $percentComplete = [math]::Round(($completedSegments / $totalSegments) * 100)
+            $percentComplete = [math]::Min([math]::Round(($completedSegments / $totalSegments) * 100), 100)
             Write-Progress -Activity "Merging segments" -Status "$percentComplete% complete" -PercentComplete $percentComplete
         } else {
             Write-Error "Segment file '$Segment' not found."
@@ -120,16 +127,28 @@ function Merge-Segments {
     }
     $OutputStream.Close()
 }
-
-# Run the downloader and merge the segments
 Clear-Host
+
+# Determine script directory with fallback to current directory
+$ScriptDirectory = if ($PSScriptRoot) { $PSScriptRoot } else { $PWD.Path }
+
+# Set window title for clarity
+$host.UI.RawUI.WindowTitle = "VHD Download Manager - Main Process"
+
+$Url = "https://stgpublicdownloads.blob.core.windows.net/cnt-selfhosteddma-vmimages/10.5/mgdsk-selfhosted-dma-Images-1005000900.vhdx"
+$OutputFile = Join-Path -Path $ScriptDirectory -ChildPath "disk-selfhosteddma.vhdx"
+# Download the SHA256 file
+$shaResponse = Invoke-WebRequest -Uri ($Url + ".sha256")
+
+# Extract the hash (first token before the filename)
+$urlSHA256 = $shaResponse.Content.Split(" ")[0]
 
 # Log the start time
 $startTime = Get-Date
 Write-Host "Download started at: $startTime"
 
 # Start the download
-$SegmentFiles = Start-Download -Url $Url -OutputFile $OutputFile -Threads 64
+$SegmentFiles = Start-Download -Url $Url -OutputFile $OutputFile -Threads 16
 
 # Merge the segments
 Write-Host "Starting merge process..." -ForegroundColor Yellow
