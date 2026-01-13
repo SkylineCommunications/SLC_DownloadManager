@@ -82,9 +82,9 @@ SLC_DownloadManager.csproj
 .vscode/tasks.json    - VS Code build/run tasks
 ```
 
-## Heatmap Display
+## Progress Display
 
-During download, the heatmap updates every 500ms:
+During download, the heatmap updates every 500ms to show per-segment state and overall throughput:
 ```
 Segment Status:
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
@@ -92,7 +92,49 @@ Segment Status:
 Progress: 25% | 250.00 MB / 1000.00 MB
 ```
 
-After completion, final heatmap is displayed as summary.
+Legend: **green** = success, **yellow** = retrying (number shows retry count), **red** = failed after max retries, **gray** = in progress/queued.
+
+After download completes, the final segment heatmap is displayed as a summary, followed by a single-line merge progress indicator that updates in-place (0% → 100%) without scrolling:
+```
+Download Complete - Final Segment Status:
+0 0 0 0 0 0 0 0
+
+100% | 1996.20 MB / 1996.20 MB
+
+Merging segments into final file...
+Merging:  75%
+Successfully created: test.bin
+```
+
+## Chaos Mode
+
+Chaos mode (`--chaos`) purposely injects failures to validate retry logic and resilience:
+- **Segment 0**: Simulated immediate failure on first attempt, forces retry path
+- **Segment 1**: Simulated timeout (5-second limit), exercises cancellation handling
+
+Use chaos mode to verify:
+- Heatmap color transitions (gray → yellow [1] → green or red)
+- Retry counter increments in yellow segments
+- Merge executes successfully after all retries complete
+- Single-line merge progress updates cleanly without scrolling
+
+Example output during chaos (retries in progress):
+```
+Segment Status:
+1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Progress: 12% | 120.00 MB / 1000.00 MB
+```
+
+After segment retries complete (all segments green):
+```
+Download Complete - Final Segment Status:
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+100% | 1000.00 MB / 1000.00 MB
+```
+
+Tip: Increase `--retries` if segments exceed max attempts (e.g., `--retries=6`) for more aggressive retry behavior.
 
 ## Error Handling
 
