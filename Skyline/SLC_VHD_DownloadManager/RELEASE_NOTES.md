@@ -69,14 +69,14 @@ Or simply use:
 ### Changed
 - Removed PID-based tracking/cleanup; replaced with job-based cleanup using `Get-Job`, `Stop-Job`, and `Remove-Job`.
 - Fixed Unix-style stderr redirection (`2>/dev/null`) to PowerShell semantics.
-- Updated README: requirements now state Windows PowerShell 5.1 or PowerShell 7+, usage examples, and cleanup behavior.
+- Updated README: requirements now mandate PowerShell 7+, usage examples, and cleanup behavior.
 
 ### Fixed
 - Error where `Get-Process -Id $job.ChildJobs[0].Location` attempted to use `Location` (e.g., `localhost`) as a PID.
 
 ### Compatibility
-- Validated on Windows PowerShell 5.1 and PowerShell 7.
-- Minimum PowerShell 4.0 due to `Get-FileHash`; 5.1+ recommended. Use your default PowerShell for normal operation.
+- Validated on PowerShell 7+
+- Requires .NET 6+ runtime for cross-platform execution
 
 ---
 

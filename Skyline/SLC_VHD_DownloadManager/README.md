@@ -13,11 +13,15 @@ A robust PowerShell module for downloading large VHD files with multi-threaded p
 
 ## Requirements
 
-- **PowerShell 5.1 or PowerShell 7+** (Windows or cross-platform)
-- **ThreadJob Module** (automatically installed if missing)
+- **PowerShell 7+** (Windows, macOS, or Linux)
+- **.NET 6+** (runtime requirement)
+- **ThreadJob Module** (required for parallel job execution - auto-installed if missing)
 - Network access to target file URLs
 
-> Note: ThreadJob module will be auto-installed on first run if not already present. This requires internet access and appropriate permissions.
+**Dependency Details:**
+- ThreadJob module is required and will be automatically installed on first run if not present
+- Requires internet access during initial setup for ThreadJob installation
+- CurrentUser module scope installation does not require administrator privileges
 
 ## Installation
 
